@@ -1,6 +1,44 @@
 import type { LangfuseRuntime, LangfuseScoreClient, PendingScore } from "./types.js";
 import { state } from "./state.js";
 import { randomUUID } from "node:crypto";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { platform, homedir } from "node:os";
+
+function getLogFilePath(): string {
+  if (process.env.PI_LANGFUSE_LOG_FILE) {
+    return process.env.PI_LANGFUSE_LOG_FILE;
+  }
+  if (platform() === "darwin") {
+    const dir = join(homedir(), "Library", "Logs");
+    mkdirSync(dir, { recursive: true });
+    return join(dir, "pi-langfuse-debug.log");
+  }
+  // Linux: use XDG_STATE_HOME, falling back to ~/.local/state
+  const xdgState = process.env.XDG_STATE_HOME || join(homedir(), ".local", "state");
+  mkdirSync(xdgState, { recursive: true });
+  return join(xdgState, "pi-langfuse-debug.log");
+}
+
+let logFilePath: string | undefined;
+function getLogPath(): string {
+  if (!logFilePath) {
+    logFilePath = getLogFilePath();
+  }
+  return logFilePath;
+}
+
+function fileLog(message: string, data?: unknown): void {
+  try {
+    const ts = new Date().toISOString();
+    const line = data !== undefined
+      ? `[${ts}] ${message} ${typeof data === 'string' ? data : JSON.stringify(data)}\n`
+      : `[${ts}] ${message}\n`;
+    appendFileSync(getLogPath(), line);
+  } catch {
+    // Silently ignore log write failures
+  }
+}
 
 let runtime: LangfuseRuntime | null = null;
 let registeredContextManager: OtelContextManager | null = null;
@@ -95,10 +133,14 @@ function delay(ms: number, signal?: AbortSignal) {
   });
 }
 
-function debugLog(message: string) {
+function debugLog(message: string): void {
   if (process.env.PI_LANGFUSE_DEBUG === "1" || process.env.PI_LANGFUSE_DEBUG === "true") {
-    console.log(message);
+    fileLog(message);
   }
+}
+
+function warnLog(message: string, data?: unknown): void {
+  fileLog(message, data);
 }
 
 export function ensureOtelContextManager(
@@ -225,12 +267,12 @@ async function flushPendingScores(rt: LangfuseRuntime, signal: AbortSignal): Pro
       pendingScores.splice(0, scores.length);
       if (errors.length > 0) {
         rememberRuntimeError("score ingestion", new Error(JSON.stringify(errors)));
-        console.warn("📊 Langfuse: Score ingestion reported errors", errors);
+        warnLog("📊 Langfuse: Score ingestion reported errors", errors);
       }
     } catch (error) {
       if ((error as { name?: string }).name !== "AbortError") {
         rememberRuntimeError("score ingestion", error);
-        console.warn("📊 Langfuse: Failed to flush scores", error);
+        warnLog("📊 Langfuse: Failed to flush scores", error);
       }
       return;
     }
@@ -538,7 +580,7 @@ async function fallbackToRestIngestion(rt: LangfuseRuntime, signal: AbortSignal)
   const errors = await ingestBatch(rt, batch, signal);
   if (errors.length > 0) {
     rememberRuntimeError("REST fallback ingestion", new Error(JSON.stringify(errors)));
-    console.warn("📊 Langfuse: REST fallback ingestion reported errors", errors);
+    warnLog("📊 Langfuse: REST fallback ingestion reported errors", errors);
   } else {
     debugLog(`📊 Langfuse: OTel trace ${trace.id} was not visible; wrote fallback trace via REST ingestion`);
   }
@@ -662,7 +704,7 @@ function doShutdownRuntime(): Promise<void> {
       await withShutdownDeadline("OTel tracer shutdown", () => rt.tracerProvider?.shutdown?.(), deadline);
     } catch (e) {
       rememberRuntimeError("runtime shutdown", e);
-      console.warn("📊 Langfuse: Failed to flush/shutdown cleanly", e);
+      warnLog("📊 Langfuse: Failed to flush/shutdown cleanly", e);
     } finally {
       clearTimeout(abortTimeout);
       clearScoreFlushTimer(rt);
@@ -739,7 +781,7 @@ export async function sendScore(name: string, value: number, options: { traceId?
         `Langfuse score queue is full (${MAX_SCORE_QUEUE_SIZE}); dropping score`,
       );
       rememberRuntimeError("score queue", error);
-      console.warn(`📊 Langfuse: ${error.message}`);
+      warnLog(`📊 Langfuse: ${error.message}`);
       return;
     }
 
@@ -751,6 +793,6 @@ export async function sendScore(name: string, value: number, options: { traceId?
     }
   } catch (e) {
     rememberRuntimeError(`score ${name}`, e);
-    console.warn(`📊 Langfuse: Failed to send score ${name}`, e);
+    warnLog(`📊 Langfuse: Failed to send score ${name}`, e);
   }
 }
