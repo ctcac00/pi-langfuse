@@ -6,6 +6,7 @@ import { state } from "./state.js";
 import { forceShutdownRuntime } from "./langfuse.js";
 import { createCapturePolicy, type EnvLike } from "./capture-policy.js";
 import { createPayloadLimits } from "./limits.js";
+import { debugLog, warnLog } from "./log.js";
 
 export function loadConfigFromFile(path = CONFIG_PATH, env: EnvLike = process.env as EnvLike): Config | null {
   if (existsSync(path)) {
@@ -27,7 +28,7 @@ export function loadConfigFromFile(path = CONFIG_PATH, env: EnvLike = process.en
         };
       }
     } catch (e) {
-      console.warn("📊 Langfuse: Failed to load config.json", e);
+      warnLog("📊 Langfuse: Failed to load config.json", e);
     }
   }
 
@@ -86,7 +87,7 @@ export function sanitizeConfigForLog(config: Pick<Config, "publicKey" | "secretK
 
 async function collectConfigFromUI(ctx: any, reason: string): Promise<Config | null> {
   if (!ctx.hasUI) {
-    console.log(`📊 Langfuse: ${reason}. Run this extension in Pi UI to complete setup, or set LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL.`);
+    debugLog(`📊 Langfuse: ${reason}. Run this extension in Pi UI to complete setup, or set LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL.`);
     return null;
   }
 
@@ -121,7 +122,7 @@ async function saveConfigFromUI(ctx: any, config: Config): Promise<boolean> {
     ctx.ui.notify(`Langfuse config saved to ${CONFIG_PATH}`, "info");
     return true;
   } catch (error) {
-    console.warn("📊 Langfuse: Failed to save config.json", error);
+    warnLog("📊 Langfuse: Failed to save config.json", error);
     ctx.ui.notify(`Failed to save Langfuse config.json to ${CONFIG_PATH}. Check Pi config directory permissions.`, "error");
     state.config = null;
     return false;

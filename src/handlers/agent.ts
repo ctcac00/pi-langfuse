@@ -3,6 +3,7 @@ import { getRuntime, sendScore } from "../langfuse.js";
 import { ensureConfig } from "../config.js";
 import { shapePayload, truncate, extractFinalAssistant, extractAssistantOutput, getCapturePolicy, getLimits } from "../utils.js";
 import { closeDanglingObservations } from "./tool.js";
+import { warnLog } from "../log.js";
 import { applyCapturePolicy } from "../capture-policy.js";
 import { collectSourceMetadata } from "../source-metadata.js";
 
@@ -119,7 +120,7 @@ export async function startAgentRun(event: Record<string, unknown>, ctx: any) {
     state.agentState.traceId = root.traceId;
     updateTraceIO(captured.input, undefined);
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to create agent observation", e);
+    warnLog("📊 Langfuse: Failed to create agent observation", e);
     state.isTracingDisabled = true;
   }
 }
@@ -166,7 +167,7 @@ export async function finishAgentRun(event: Record<string, unknown> = {}) {
     await sendScore("tool_success_rate", scores.tool_success_rate, { traceId: state.agentState.traceId });
     await sendScore("session_had_errors", scores.session_had_errors, { traceId: state.agentState.traceId });
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to finish agent observation", e);
+    warnLog("📊 Langfuse: Failed to finish agent observation", e);
   } finally {
     resetRunState();
   }

@@ -3,6 +3,7 @@ import { getRuntime } from "../langfuse.js";
 import { startChildObservation } from "../observation.js";
 import { shapePayload, getCapturePolicy } from "../utils.js";
 import { applyCapturePolicy } from "../capture-policy.js";
+import { warnLog } from "../log.js";
 
 export async function startTurnObservation(event: Record<string, unknown>) {
   if (state.isTracingDisabled || !state.agentState?.root) {
@@ -37,7 +38,7 @@ export async function startTurnObservation(event: Record<string, unknown>) {
 
     state.agentState.activeTurn = observation;
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to start turn observation", e);
+    warnLog("📊 Langfuse: Failed to start turn observation", e);
   }
 }
 
@@ -50,6 +51,6 @@ export function finishTurnObservation(_event?: Record<string, unknown>) {
     state.agentState.activeTurn.end();
     state.agentState.activeTurn = undefined;
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to finish turn observation", e);
+    warnLog("📊 Langfuse: Failed to finish turn observation", e);
   }
 }

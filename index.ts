@@ -13,6 +13,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { state, resetRunState, runWithSession, setCurrentSession } from "./src/state.js";
 import { ensureConfig, promptForConfig, loadConfig } from "./src/config.js";
 import { shutdownRuntime } from "./src/langfuse.js";
+import { debugLog, warnLog } from "./src/log.js";
 import { handleLangfusePrivacyCommand, handleLangfuseStatusCommand, handleLangfuseTestCommand } from "./src/commands.js";
 import { getMessageFromEvent, extractAssistantOutput, getCapturePolicy } from "./src/utils.js";
 import { applyCapturePolicy } from "./src/capture-policy.js";
@@ -41,9 +42,9 @@ export default async function (pi: ExtensionAPI) {
   }
 
   if (state.config) {
-    console.log("📊 Langfuse: Tracing enabled →", state.config.host);
+    debugLog(`📊 Langfuse: Tracing enabled → ${state.config.host}`);
   } else {
-    console.log("📊 Langfuse: Waiting for first-run setup");
+    debugLog("📊 Langfuse: Waiting for first-run setup");
   }
 
   pi.registerCommand("langfuse-setup", {
@@ -161,7 +162,7 @@ export default async function (pi: ExtensionAPI) {
     const sessionId = state.currentSessionId;
     setTimeout(() => {
       shutdownRuntime(sessionId).catch((error) => {
-        console.warn("📊 Langfuse: Deferred shutdown failed", error);
+        warnLog("📊 Langfuse: Deferred shutdown failed", error);
       });
     }, 0);
   }));

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { getRuntime } from "../langfuse.js";
 import { startChildObservation } from "../observation.js";
+import { warnLog } from "../log.js";
 import {
   getRequestKey,
   getProviderPayload,
@@ -80,7 +81,7 @@ export async function startGeneration(event: Record<string, unknown>) {
     });
     state.agentState.generationOrder.push(key);
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to start generation", e);
+    warnLog("📊 Langfuse: Failed to start generation", e);
   }
 }
 
@@ -196,7 +197,7 @@ export async function finishGenerationFromMessage(event: Record<string, unknown>
     generation.observation.update(update).end();
     generation.ended = true;
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to finish generation", e);
+    warnLog("📊 Langfuse: Failed to finish generation", e);
   }
 }
 
@@ -241,6 +242,6 @@ export async function createFallbackGenerationFromTurn(event: Record<string, unk
     generation.end();
     state.agentState.generationOrder.push("turn-end-fallback");
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to create fallback generation", e);
+    warnLog("📊 Langfuse: Failed to create fallback generation", e);
   }
 }

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { getRuntime, sendScore } from "../langfuse.js";
 import { startChildObservation } from "../observation.js";
+import { warnLog } from "../log.js";
 import {
   getToolCallId,
   getToolName,
@@ -58,7 +59,7 @@ export async function startToolObservation(event: Record<string, unknown>) {
       inputBytes,
     });
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to start tool observation", e);
+    warnLog("📊 Langfuse: Failed to start tool observation", e);
   }
 }
 
@@ -125,7 +126,7 @@ export async function finishToolObservation(event: Record<string, unknown>) {
       });
     }
   } catch (e) {
-    console.warn("📊 Langfuse: Failed to finish tool observation", e);
+    warnLog("📊 Langfuse: Failed to finish tool observation", e);
   } finally {
     state.agentState.activeTools.delete(toolCallId);
   }
